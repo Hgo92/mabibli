@@ -33,7 +33,7 @@ public class AuthService {
         this.jwtService = jwtService;
     }
 
-    public void register(RegisterRequest request) {
+    public AuthResponse register(RegisterRequest request) {
         if (userRepository.existByUsername(request.username())) {
             throw new UsernameAlreadyExistsException(request.username());
         }
@@ -44,6 +44,9 @@ public class AuthService {
         user.setCreatedAt(LocalDate.now());
 
         userRepository.save(user);
+
+        String token = jwtService.generateToken(user.getUsername());
+        return new AuthResponse(token, "Bearer");
     }
 
     public AuthResponse login(LoginRequest request) {
