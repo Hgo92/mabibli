@@ -16,5 +16,10 @@ public enum Category {
     SCIENCE_FICTION,
     BD,
     MANGA,
+    HUMOUR,
+    PHILOSOPHIE,
+    ESSAI,
+    THEATRE,
+    DRAME,
     AUTRE
 }
