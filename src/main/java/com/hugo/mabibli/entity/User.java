@@ -20,7 +20,7 @@ public class User {
     @Column(name= "created_at", nullable = false, updatable = false)
     private LocalDate createdAt;
 
-    @Column(name = "updated_at", nullable = false)
+    @Column(name = "updated_at")
     private LocalDate updatedAt;
 
     public User() {}

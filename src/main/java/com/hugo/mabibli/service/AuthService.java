@@ -34,7 +34,7 @@ public class AuthService {
     }
 
     public AuthResponse register(RegisterRequest request) {
-        if (userRepository.existByUsername(request.username())) {
+        if (userRepository.existsByUsername(request.username())) {
             throw new UsernameAlreadyExistsException(request.username());
         }
 
@@ -42,6 +42,7 @@ public class AuthService {
         user.setUsername(request.username());
         user.setPassword(passwordEncoder.encode(request.password()));
         user.setCreatedAt(LocalDate.now());
+        user.setUpdatedAt(LocalDate.now());
 
         userRepository.save(user);
 
