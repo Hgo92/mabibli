@@ -12,6 +12,10 @@ public class Book {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    private String isbn;
+
+    private String openLibraryId;
+
     @Column(nullable = false)
     private String title;
 
@@ -64,9 +68,14 @@ public class Book {
     public Book() {}
 
     // Mes setters et getters (que je pourrais simplifier avec Lombok mais je préfère les avoir en dur pour apprendre)
-
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+
+    public String getIsbn() { return isbn; }
+    public void setIsbn(String isbn) { this.isbn = isbn; }
+
+    public String getOpenLibraryId() { return openLibraryId; }
+    public void setOpenLibraryId(String openLibraryId) { this.openLibraryId = openLibraryId; }
 
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
