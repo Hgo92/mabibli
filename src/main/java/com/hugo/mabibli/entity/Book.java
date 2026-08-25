@@ -6,17 +6,27 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Entity
-@Table(name = "books")
+@Table(name = "books",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_book_library_open_library",
+                columnNames = {
+                        "library_id",
+                        "open_library_id"
+                }
+        )
+)
 public class Book {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(length = 25)
     private String isbn;
 
+    @Column(name = "open_library_id", nullable = false, length = 50)
     private String openLibraryId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 255)
     private String title;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -25,7 +35,7 @@ public class Book {
 
     private Integer seriesIndex;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 255)
     private String author;
 
     @Enumerated(EnumType.STRING)
@@ -35,9 +45,10 @@ public class Book {
     @Column(name = "reading_date")
     private LocalDate readingDate;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT", length=1000)
     private String description;
 
+    @Column(length = 500)
     private String cover;
 
     private Integer pages;
@@ -48,12 +59,12 @@ public class Book {
             joinColumns = @JoinColumn(name = "book_id")
     )
     @Enumerated(EnumType.STRING)
-    @Column(name = "category")
+    @Column(
+            name = "category",
+            nullable = false,
+            length = 50
+    )
     private Set<Category> categories = new HashSet<>();
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "library_id", nullable = false)
@@ -106,9 +117,6 @@ public class Book {
 
     public Set<Category> getCategories() { return categories; }
     public void setCategories(Set<Category> categories) { this.categories = categories; }
-
-    public User getUser() { return user; }
-    public void setUser(User user) { this.user = user; }
 
     public Library getLibrary() { return library; }
     public void setLibrary(Library library) { this.library = library; }

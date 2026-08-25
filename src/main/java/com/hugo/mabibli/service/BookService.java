@@ -1,19 +1,26 @@
 package com.hugo.mabibli.service;
 
 import com.hugo.mabibli.dto.AddBookRequest;
+import com.hugo.mabibli.dto.BookResponse;
+import com.hugo.mabibli.dto.UpdateBookRequest;
 import com.hugo.mabibli.entity.Book;
 import com.hugo.mabibli.entity.Library;
 import com.hugo.mabibli.entity.Status;
 import com.hugo.mabibli.entity.User;
 import com.hugo.mabibli.exception.BookAlreadyExistsException;
+import com.hugo.mabibli.exception.BookNotFoundException;
 import com.hugo.mabibli.exception.LibraryNotFoundException;
 import com.hugo.mabibli.repository.BookRepository;
 import com.hugo.mabibli.repository.LibraryRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
+import java.util.Set;
 
 @Service
+@Transactional
 public class BookService {
     private final BookRepository bookRepository;
     private final LibraryRepository libraryRepository;
@@ -23,12 +30,41 @@ public class BookService {
         this.libraryRepository = libraryRepository;
     }
 
-    public void addBook(User user, AddBookRequest request) {
-        Library library = libraryRepository.findById(request.libraryId())
-                .filter(l -> l.getUser().getId().equals(user.getId()))
+    @Transactional(readOnly = true)
+    public List<BookResponse> findAll(User user, Long libraryId) {
+        libraryRepository
+                .findByIdAndUser_Id(libraryId, user.getId())
                 .orElseThrow(LibraryNotFoundException::new);
 
-        if (bookRepository.existsByOpenLibraryIdAndUserId(request.openLibraryId(), user.getId())) {
+        return bookRepository
+                .findAllByLibrary_IdAndLibrary_User_IdOrderByTitleAsc(
+                        libraryId,
+                        user.getId()
+                )
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public BookResponse findOne(User user, Long libraryId, Long bookId) {
+        Book book = bookRepository
+                .findByIdAndLibrary_IdAndLibrary_User_Id(
+                        bookId,
+                        libraryId,
+                        user.getId()
+                )
+                .orElseThrow(BookNotFoundException::new);
+
+        return toResponse(book);
+    }
+
+    public BookResponse addBook(User user, Long libraryId, AddBookRequest request) {
+        Library library = libraryRepository
+                .findByIdAndUser_Id(libraryId, user.getId())
+                .orElseThrow(LibraryNotFoundException::new);
+
+        if (bookRepository.existsByOpenLibraryIdAndLibrary_Id(request.openLibraryId(), library.getId())) {
             throw new BookAlreadyExistsException();
         }
 
@@ -39,11 +75,64 @@ public class BookService {
         book.setIsbn(request.isbn());
         book.setCover(request.cover());
         book.setStatus(request.status() != null ? request.status() : Status.A_LIRE);
-        book.setUser(user);
         book.setLibrary(library);
         book.setCreatedAt(LocalDate.now());
 
         bookRepository.save(book);
+        return toResponse(book);
     }
 
+    public BookResponse updateBook(User user, Long libraryId, Long bookId, UpdateBookRequest request) {
+        Book book = bookRepository
+                .findByIdAndLibrary_IdAndLibrary_User_Id(
+                bookId,
+                libraryId,
+                user.getId())
+                .orElseThrow(BookNotFoundException::new);
+
+        if (request.title() != null) book.setTitle(request.title());
+        if (request.author() != null) book.setAuthor(request.author());
+        if (request.status() != null) book.setStatus(request.status());
+        if (request.readingDate() != null) book.setReadingDate(request.readingDate());
+        if (request.description() != null) book.setDescription(request.description());
+        if (request.cover() != null) book.setCover(request.cover());
+        if (request.pages() != null) book.setPages(request.pages());
+        if (request.seriesIndex() != null) book.setSeriesIndex(request.seriesIndex());
+        if (request.categories() != null) book.setCategories(request.categories());
+
+        book.setUpdatedAt(LocalDate.now());
+        bookRepository.save(book);
+        return toResponse(book);
+    }
+
+    public void deleteBook(User user, Long libraryId, Long bookId) {
+        Book book = bookRepository
+                .findByIdAndLibrary_IdAndLibrary_User_Id(
+                        bookId,
+                        libraryId,
+                        user.getId()
+                )
+                .orElseThrow(BookNotFoundException::new);
+
+        bookRepository.delete(book);
+    }
+
+    private BookResponse toResponse(Book book) {
+        return new BookResponse(
+                book.getId(),
+                book.getLibrary().getId(),
+                book.getOpenLibraryId(),
+                book.getIsbn(),
+                book.getTitle(),
+                book.getAuthor(),
+                book.getStatus(),
+                book.getReadingDate(),
+                book.getDescription(),
+                book.getCover(),
+                book.getPages(),
+                Set.copyOf(book.getCategories()),
+                book.getCreatedAt(),
+                book.getUpdatedAt()
+        );
+    }
 }
