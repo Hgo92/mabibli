@@ -1,5 +1,6 @@
 package com.hugo.mabibli.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 
@@ -10,11 +11,11 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, unique = true, length=50)
     private String username;
 
-    @Column(nullable = false)
-    @com.fasterxml.jackson.annotation.JsonIgnore
+    @Column(nullable = false, length=255)
+    @JsonIgnore
     private String password;
 
     @Column(name= "created_at", nullable = false, updatable = false)

@@ -4,14 +4,16 @@ import jakarta.persistence.*;
 import java.time.LocalDate;
 
 @Entity
-@Table(name = "series", uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "title"}))
+@Table(name = "series", uniqueConstraints = @UniqueConstraint(
+        name = "uk_series_user_title",
+        columnNames = {"user_id", "title"}))
 public class Series {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 255)
     private String title;
 
     @ManyToOne(fetch = FetchType.LAZY)
