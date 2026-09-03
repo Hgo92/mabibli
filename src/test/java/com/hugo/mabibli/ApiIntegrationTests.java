@@ -110,6 +110,19 @@ class ApiIntegrationTests {
         return objectMapper.readTree(response).path("id").asLong();
     }
 
+    private Long createSeries(String token, String title) throws Exception {
+        String response = mockMvc.perform(
+                post("/api/series")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(toJson(Map.of("title", title)))
+        )
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        return objectMapper.readTree(response).path("id").asLong();
+    }
+
     // Ce test va créer le compte, vérifier qu'il y a bien un token et que le mdp a bien été hashé
     @Test
     void registerCreatesUserWithEncryptedPassword() throws Exception {
@@ -148,10 +161,7 @@ class ApiIntegrationTests {
     @Test
     void loginRejectsInvalidPassword() throws Exception {
 
-        // Crée l'utilisateur avec le bon mot de passe.
         registerAndGetToken("hugo");
-
-        // Tente de se connecter avec un mot de passe différent.
         mockMvc.perform(
                         post("/api/auth/login")
                                 .contentType(MediaType.APPLICATION_JSON)
@@ -161,7 +171,6 @@ class ApiIntegrationTests {
                                 )))
                 )
 
-                // Une mauvaise authentification doit répondre 401.
                 .andExpect(status().isUnauthorized());
     }
 
@@ -314,5 +323,103 @@ class ApiIntegrationTests {
         assertThat(libraryRepository.existsById(libraryId)).isFalse();
     }
 
+    // Trois tests pour les séries
+    @Test
+    void userCanAssignSeriesToBook() throws Exception {
+
+        String token = registerAndGetToken("hugo");
+        Long libraryId = createLibrary(token, "Science-fiction");
+        Long bookId = addBook(token, libraryId, "OL123W", "Dune");
+        Long seriesId = createSeries(token, "Le Cycle de Dune");
+
+        mockMvc.perform(
+                        put(
+                                "/api/libraries/{libraryId}/books/{bookId}/series",
+                                libraryId,
+                                bookId
+                        )
+                                .header(
+                                        "Authorization",
+                                        "Bearer " + token
+                                )
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(toJson(Map.of(
+                                        "seriesId", seriesId,
+                                        "seriesIndex", 1
+                                )))
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.seriesId").value(seriesId))
+                .andExpect(jsonPath("$.seriesTitle").value("Le Cycle de Dune"))
+                .andExpect(jsonPath("$.seriesIndex").value(1));
+    }
+
+    @Test
+    void userCannotAssignAnotherUsersSeries() throws Exception {
+        String aliceToken = registerAndGetToken("alice");
+        String bobToken = registerAndGetToken("bob");
+
+        Long aliceSeriesId = createSeries(aliceToken, "Série Alice");
+        Long bobLibraryId = createLibrary(bobToken, "Bibliothèque Bob");
+        Long bobBookId = addBook(bobToken, bobLibraryId, "OL123W", "Livre Bob");
+
+        mockMvc.perform(
+                        put(
+                                "/api/libraries/{libraryId}/books/{bookId}/series",
+                                bobLibraryId,
+                                bobBookId
+                        )
+                                .header(
+                                        "Authorization", "Bearer " + bobToken)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(toJson(Map.of(
+                                        "seriesId", aliceSeriesId,
+                                        "seriesIndex", 1
+                                )))
+                )
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void deletingSeriesDetachesItsBooks() throws Exception {
+        String token = registerAndGetToken("hugo");
+        Long libraryId = createLibrary(token, "Romans");
+        Long bookId = addBook(token, libraryId, "OL123W", "Dune");
+        Long seriesId = createSeries(token, "Le Cycle de Dune");
+
+        mockMvc.perform(
+                        put(
+                                "/api/libraries/{libraryId}/books/{bookId}/series",
+                                libraryId,
+                                bookId
+                        )
+                                .header("Authorization", "Bearer " + token)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(toJson(Map.of(
+                                        "seriesId", seriesId,
+                                        "seriesIndex", 1
+                                )))
+                )
+                .andExpect(status().isOk());
+
+        mockMvc.perform(
+                        delete("/api/series/{seriesId}", seriesId)
+                                .header("Authorization", "Bearer " + token)
+                )
+                .andExpect(status().isNoContent());
+
+        // Relit le livre.
+        mockMvc.perform(
+                        get(
+                                "/api/libraries/{libraryId}/books/{bookId}",
+                                libraryId,
+                                bookId
+                        )
+                                .header("Authorization", "Bearer " + token)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.seriesId").value((Object) null))
+                .andExpect(jsonPath("$.seriesIndex").value((Object) null));
+    }
 
 }
