@@ -55,6 +55,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", ex.getMessage()));
     }
 
+    @ExceptionHandler(SeriesNotFoundException.class)
+    public ResponseEntity<Map<String,String>> handleSeriesNotFound(SeriesNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", ex.getMessage()));
+    }
 
+    @ExceptionHandler(SeriesAlreadyExistsException.class)
+    public ResponseEntity<Map<String,String>> handleSeriesAlreadyExistsException(SeriesAlreadyExistsException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", ex.getMessage()));
+    }
 
 }
