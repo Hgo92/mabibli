@@ -11,6 +11,11 @@ public interface BookRepository extends JpaRepository<Book, Long>{
             Long userId
     );
 
+    List<Book> findAllBySeries_IdAndLibrary_User_Id(
+            Long seriesId,
+            Long userId
+    );
+
     Optional<Book> findByIdAndLibrary_User_Id(
             Long bookId,
             Long userId

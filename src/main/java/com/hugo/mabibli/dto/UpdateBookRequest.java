@@ -16,6 +16,5 @@ public record UpdateBookRequest(
         @Size(max=1000) String description,
         @Size(max = 500)  String cover,
         @Positive Integer pages,
-        @Positive Integer seriesIndex,
         Set<Category> categories
 ) {}

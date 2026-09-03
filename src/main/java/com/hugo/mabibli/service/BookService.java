@@ -1,17 +1,17 @@
 package com.hugo.mabibli.service;
 
 import com.hugo.mabibli.dto.AddBookRequest;
+import com.hugo.mabibli.dto.AssignSeriesRequest;
 import com.hugo.mabibli.dto.BookResponse;
 import com.hugo.mabibli.dto.UpdateBookRequest;
-import com.hugo.mabibli.entity.Book;
-import com.hugo.mabibli.entity.Library;
-import com.hugo.mabibli.entity.Status;
-import com.hugo.mabibli.entity.User;
+import com.hugo.mabibli.entity.*;
 import com.hugo.mabibli.exception.BookAlreadyExistsException;
 import com.hugo.mabibli.exception.BookNotFoundException;
 import com.hugo.mabibli.exception.LibraryNotFoundException;
+import com.hugo.mabibli.exception.SeriesNotFoundException;
 import com.hugo.mabibli.repository.BookRepository;
 import com.hugo.mabibli.repository.LibraryRepository;
+import com.hugo.mabibli.repository.SeriesRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,10 +24,12 @@ import java.util.Set;
 public class BookService {
     private final BookRepository bookRepository;
     private final LibraryRepository libraryRepository;
+    private final SeriesRepository seriesRepository;
 
-    public BookService(BookRepository bookRepository, LibraryRepository libraryRepository) {
+    public BookService(BookRepository bookRepository, LibraryRepository libraryRepository, SeriesRepository seriesRepository) {
         this.bookRepository = bookRepository;
         this.libraryRepository = libraryRepository;
+        this.seriesRepository = seriesRepository;
     }
 
     @Transactional(readOnly = true)
@@ -97,7 +99,6 @@ public class BookService {
         if (request.description() != null) book.setDescription(request.description());
         if (request.cover() != null) book.setCover(request.cover());
         if (request.pages() != null) book.setPages(request.pages());
-        if (request.seriesIndex() != null) book.setSeriesIndex(request.seriesIndex());
         if (request.categories() != null) book.setCategories(request.categories());
 
         book.setUpdatedAt(LocalDate.now());
@@ -117,6 +118,34 @@ public class BookService {
         bookRepository.delete(book);
     }
 
+    public BookResponse assignSeries(User user, Long libraryId, Long bookId, AssignSeriesRequest request) {
+        Book book = bookRepository
+                .findByIdAndLibrary_IdAndLibrary_User_Id(bookId, libraryId, user.getId())
+                .orElseThrow(BookNotFoundException::new);
+
+        Series series = seriesRepository
+                .findByIdAndUser_Id(request.seriesId(), user.getId())
+                .orElseThrow(SeriesNotFoundException::new);
+
+        book.setSeries(series);
+        book.setSeriesIndex(request.seriesIndex());
+        book.setUpdatedAt(LocalDate.now());
+
+        return toResponse(book);
+    }
+
+    public BookResponse removeSeries(User user, Long libraryId, Long bookId) {
+        Book book = bookRepository
+                .findByIdAndLibrary_IdAndLibrary_User_Id(bookId, libraryId, user.getId())
+        .orElseThrow(BookNotFoundException::new);
+
+        book.setSeries(null);
+        book.setSeriesIndex(null);
+        book.setUpdatedAt(LocalDate.now());
+
+        return toResponse(book);
+    }
+
     private BookResponse toResponse(Book book) {
         return new BookResponse(
                 book.getId(),
@@ -130,6 +159,9 @@ public class BookService {
                 book.getDescription(),
                 book.getCover(),
                 book.getPages(),
+                book.getSeries() != null ? book.getSeries().getId() : null,
+                book.getSeries() != null ? book.getSeries().getTitle() : null,
+                book.getSeriesIndex(),
                 Set.copyOf(book.getCategories()),
                 book.getCreatedAt(),
                 book.getUpdatedAt()

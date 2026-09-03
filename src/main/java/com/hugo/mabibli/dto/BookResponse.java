@@ -18,6 +18,9 @@ public record BookResponse(
         String description,
         String cover,
         Integer pages,
+        Long seriesId,
+        String seriesTitle,
+        Integer seriesIndex,
         Set<Category> categories,
         LocalDate createdAt,
         LocalDate updatedAt) {

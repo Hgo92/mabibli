@@ -1,9 +1,6 @@
 package com.hugo.mabibli.controller;
 
-import com.hugo.mabibli.dto.AddBookRequest;
-import com.hugo.mabibli.dto.BookResponse;
-import com.hugo.mabibli.dto.BookSearchResult;
-import com.hugo.mabibli.dto.UpdateBookRequest;
+import com.hugo.mabibli.dto.*;
 import com.hugo.mabibli.security.UserPrincipal;
 import com.hugo.mabibli.service.BookService;
 import com.hugo.mabibli.service.OpenLibraryService;
@@ -62,6 +59,24 @@ public class BookController {
         return ResponseEntity.ok(updatedBook);
     }
 
+    @PutMapping("/{bookId}/series")
+    public ResponseEntity<BookResponse> assignSeries(
+
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long libraryId,
+            @PathVariable Long bookId,
+            @Valid @RequestBody AssignSeriesRequest request
+    ) {
+        return ResponseEntity.ok(
+                bookService.assignSeries(
+                        principal.getUser(),
+                        libraryId,
+                        bookId,
+                        request
+                )
+        );
+    }
+
     @DeleteMapping("/{bookId}")
     public ResponseEntity<Void> delete(
             @AuthenticationPrincipal UserPrincipal principal,
@@ -77,5 +92,19 @@ public class BookController {
         return ResponseEntity.noContent().build();
     }
 
+    @DeleteMapping("/{bookId}/series")
+    public ResponseEntity<BookResponse> removeSeries(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long libraryId,
+            @PathVariable Long bookId
+    ) {
+        return ResponseEntity.ok(
+                bookService.removeSeries(
+                        principal.getUser(),
+                        libraryId,
+                        bookId
+                )
+        );
+    }
 
 }
