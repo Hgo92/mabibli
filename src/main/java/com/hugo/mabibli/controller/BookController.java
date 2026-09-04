@@ -49,7 +49,7 @@ public class BookController {
         return ResponseEntity.created(location).body(createdBook);
     }
 
-    @PatchMapping("/{bookId}")
+    @PutMapping("/{bookId}")
     public ResponseEntity<BookResponse> updateBook(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long libraryId,

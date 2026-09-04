@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -93,18 +94,17 @@ public class BookService {
                 user.getId())
                 .orElseThrow(BookNotFoundException::new);
 
-        if (request.title() != null) book.setTitle(request.title());
-        if (request.author() != null) book.setAuthor(request.author());
-        if (request.status() != null) book.setStatus(request.status());
-        if (request.readingDate() != null) book.setReadingDate(request.readingDate());
-        if (request.description() != null) book.setDescription(request.description());
-        if (request.cover() != null) book.setCover(request.cover());
-        if (request.pages() != null) book.setPages(request.pages());
-        if (request.categories() != null) book.setCategories(request.categories());
-
+        book.setTitle(request.title().trim());
+        book.setAuthor(request.author().trim());
+        book.setStatus(request.status());
+        book.setReadingDate(request.readingDate());
+        book.setDescription(request.description());
+        book.setCover(request.cover());
+        book.setPages(request.pages());
+        book.setCategories(new HashSet<>(request.categories()));
         book.setUpdatedAt(LocalDate.now());
-        bookRepository.save(book);
-        return toResponse(book);
+
+        return toResponse(bookRepository.save(book));
     }
 
     public void deleteBook(User user, Long libraryId, Long bookId) {
