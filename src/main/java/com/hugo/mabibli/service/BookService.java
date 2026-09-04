@@ -74,6 +74,7 @@ public class BookService {
         book.setOpenLibraryId(request.openLibraryId());
         book.setTitle(request.title());
         book.setAuthor(request.author());
+        book.setDescription(request.description() != null ? request.description() : null);
         book.setIsbn(request.isbn());
         book.setCover(request.cover());
         book.setStatus(request.status() != null ? request.status() : Status.A_LIRE);
