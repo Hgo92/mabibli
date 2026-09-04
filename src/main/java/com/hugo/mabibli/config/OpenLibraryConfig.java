@@ -13,7 +13,7 @@ public class OpenLibraryConfig {
             @Value("${open-library.user-agent}") String userAgent
     ) {
         return RestClient.builder()
-                .baseUrl("https://openlibrary.org")
+                .baseUrl(baseUrl)
                 .defaultHeader("User-Agent", userAgent)
                 .build();
     }
