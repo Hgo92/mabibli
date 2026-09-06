@@ -75,7 +75,7 @@ public class BookService {
         book.setOpenLibraryId(request.openLibraryId().trim());
         book.setTitle(request.title().trim());
         book.setAuthor(request.author().trim());
-        book.setDescription(request.description() != null ? request.description() : null);
+        book.setDescription(nullable(request.description()));
         book.setIsbn(nullable(request.isbn()));
         book.setCover(nullable(request.cover()));
         book.setStatus(request.status() != null ? request.status() : Status.A_LIRE);
@@ -98,8 +98,8 @@ public class BookService {
         book.setAuthor(request.author().trim());
         book.setStatus(request.status());
         book.setReadingDate(request.readingDate());
-        book.setDescription(request.description());
-        book.setCover(request.cover());
+        book.setDescription(nullable(request.description()));
+        book.setCover(nullable(request.cover()));
         book.setPages(request.pages());
         book.setCategories(new HashSet<>(request.categories()));
         book.setUpdatedAt(LocalDate.now());
