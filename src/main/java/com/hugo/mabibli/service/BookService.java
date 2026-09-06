@@ -72,12 +72,12 @@ public class BookService {
         }
 
         Book book = new Book();
-        book.setOpenLibraryId(request.openLibraryId());
-        book.setTitle(request.title());
-        book.setAuthor(request.author());
+        book.setOpenLibraryId(request.openLibraryId().trim());
+        book.setTitle(request.title().trim());
+        book.setAuthor(request.author().trim());
         book.setDescription(request.description() != null ? request.description() : null);
-        book.setIsbn(request.isbn());
-        book.setCover(request.cover());
+        book.setIsbn(nullable(request.isbn()));
+        book.setCover(nullable(request.cover()));
         book.setStatus(request.status() != null ? request.status() : Status.A_LIRE);
         book.setLibrary(library);
         book.setCreatedAt(LocalDate.now());
@@ -145,6 +145,15 @@ public class BookService {
         book.setUpdatedAt(LocalDate.now());
 
         return toResponse(book);
+    }
+
+    private String nullable(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        String nullable = value.trim();
+        return nullable.isEmpty() ? null : nullable;
     }
 
     private BookResponse toResponse(Book book) {
