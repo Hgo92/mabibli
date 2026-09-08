@@ -9,6 +9,7 @@ import org.springframework.http.MediaType;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -17,6 +18,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Component
+@ConditionalOnProperty(
+        prefix = "app.rate-limit",
+        name = "enabled",
+        havingValue = "true",
+        matchIfMissing = true
+)
 public class RateLimitFilter extends OncePerRequestFilter {
 
     private final Map<String, Window> windows =

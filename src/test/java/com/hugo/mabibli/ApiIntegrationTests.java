@@ -23,6 +23,8 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import org.springframework.test.web.servlet.MvcResult;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 
 @Testcontainers // Indique que Testcontainers va gérer les @Containers
 @SpringBootTest // Indique qu'il faut lancer SpringBoot avec les tests
@@ -123,6 +125,15 @@ class ApiIntegrationTests {
         return objectMapper.readTree(response).path("id").asLong();
     }
 
+    // Test de l'endpoint de santé
+    @Test
+    void healthEndpointIsPublic() throws Exception {
+        mockMvc.perform(get("/actuator/health"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status")
+                        .value("UP"));
+    }
+
     // Ce test va créer le compte, vérifier qu'il y a bien un token et que le mdp a bien été hashé
     @Test
     void registerCreatesUserWithEncryptedPassword() throws Exception {
@@ -130,7 +141,7 @@ class ApiIntegrationTests {
 
         assertThat(token).isNotBlank();
         var user = userRepository
-                .findByUsername("hugo")
+                .findByUsernameIgnoreCase("hugo")
                 .orElseThrow();
 
         assertThat(user.getPassword())
@@ -154,7 +165,14 @@ class ApiIntegrationTests {
                         )))
         )
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error").exists());
+                .andExpect(content().contentTypeCompatibleWith(
+                        MediaType.APPLICATION_PROBLEM_JSON
+                ))
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.code")
+                        .value("USERNAME_ALREADY_EXISTS"))
+                .andExpect(jsonPath("$.detail")
+                        .value("Le nom d'utilisateur 'hugo' est déjà pris"));
     }
 
     // Ce test crée le compte puis test le login avec le mauvais mot de passe
@@ -172,6 +190,24 @@ class ApiIntegrationTests {
                 )
 
                 .andExpect(status().isUnauthorized());
+    }
+
+    // Test si l'username est sensible à la casse
+    @Test
+    void usernameIsCaseInsensitive() throws Exception {
+        registerAndGetToken("Hugo");
+
+        mockMvc.perform(
+                        post("/api/auth/register")
+                                .contentType(
+                                        MediaType.APPLICATION_JSON
+                                )
+                                .content(toJson(Map.of(
+                                        "username", "hugo",
+                                        "password", "Password123!"
+                                )))
+                )
+                .andExpect(status().isConflict());
     }
 
     // Ce test vérifie qu'une route protégée bloque si pas de token
@@ -221,6 +257,21 @@ class ApiIntegrationTests {
                                 .header("Authorization", "Bearer " + token)
                 )
                 .andExpect(status().isNotFound());
+    }
+
+    // Test d'un JWT invalide
+    @Test
+    void protectedEndpointRejectsInvalidToken() throws Exception {
+        mockMvc.perform(
+                        get("/api/libraries")
+                                .header(
+                                        "Authorization",
+                                        "Bearer invalid-token"
+                                )
+                )
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code")
+                        .value("AUTHENTICATION_REQUIRED"));
     }
 
     // Test pour vérifier qu'un utilisateur ne peut pas accéder/modifier à la bibliothèque d'un autre
@@ -378,6 +429,147 @@ class ApiIntegrationTests {
                                 )))
                 )
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void updatingBookRejectsBlankTitle() throws Exception {
+        String token = registerAndGetToken("hugo");
+        Long libraryId =
+                createLibrary(token, "Romans");
+
+        Long bookId = addBook(
+                token,
+                libraryId,
+                "OL-BLANK",
+                "Livre"
+        );
+
+        mockMvc.perform(
+                        put(
+                                "/api/libraries/{libraryId}/books/{bookId}",
+                                libraryId,
+                                bookId
+                        )
+                                .header(
+                                        "Authorization",
+                                        "Bearer " + token
+                                )
+                                .contentType(
+                                        MediaType.APPLICATION_JSON
+                                )
+                                .content("""
+                                    {
+                                      "title": "   ",
+                                      "author": "Auteur",
+                                      "status": "A_LIRE",
+                                      "categories": []
+                                    }
+                                    """)
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code")
+                        .value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void creatingBookKeepsDescription() throws Exception {
+        String token = registerAndGetToken("hugo");
+        Long libraryId =
+                createLibrary(token, "Romans");
+
+        String response = mockMvc.perform(
+                        post(
+                                "/api/libraries/{libraryId}/books",
+                                libraryId
+                        )
+                                .header(
+                                        "Authorization",
+                                        "Bearer " + token
+                                )
+                                .contentType(
+                                        MediaType.APPLICATION_JSON
+                                )
+                                .content(toJson(Map.of(
+                                        "openLibraryId", "OL-DESCRIPTION",
+                                        "title", "Dune",
+                                        "author", "Frank Herbert",
+                                        "description", "Une grande fresque."
+                                )))
+                )
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.description")
+                        .value("Une grande fresque."))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        Long bookId =
+                objectMapper.readTree(response)
+                        .path("id")
+                        .asLong();
+
+        mockMvc.perform(
+                        get(
+                                "/api/libraries/{libraryId}/books/{bookId}",
+                                libraryId,
+                                bookId
+                        )
+                                .header(
+                                        "Authorization",
+                                        "Bearer " + token
+                                )
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.description")
+                        .value("Une grande fresque."));
+    }
+
+    @Test
+    void updatingBookCanClearOptionalValues() throws Exception {
+        String token = registerAndGetToken("hugo");
+        Long libraryId =
+                createLibrary(token, "Romans");
+
+        Long bookId = addBook(
+                token,
+                libraryId,
+                "OL-CLEAR",
+                "Livre"
+        );
+
+        mockMvc.perform(
+                        put(
+                                "/api/libraries/{libraryId}/books/{bookId}",
+                                libraryId,
+                                bookId
+                        )
+                                .header(
+                                        "Authorization",
+                                        "Bearer " + token
+                                )
+                                .contentType(
+                                        MediaType.APPLICATION_JSON
+                                )
+                                .content("""
+                                    {
+                                      "title": "Livre",
+                                      "author": "Patrick Test",
+                                      "status": "LU",
+                                      "readingDate": null,
+                                      "description": null,
+                                      "cover": null,
+                                      "pages": null,
+                                      "categories": []
+                                    }
+                                    """)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.description")
+                        .value((Object) null))
+                .andExpect(jsonPath("$.cover")
+                        .value((Object) null))
+                .andExpect(jsonPath("$.pages")
+                        .value((Object) null));
     }
 
     @Test
