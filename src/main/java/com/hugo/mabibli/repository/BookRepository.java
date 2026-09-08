@@ -4,11 +4,16 @@ import com.hugo.mabibli.entity.Book;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 
 public interface BookRepository extends JpaRepository<Book, Long>{
-    List<Book> findAllByLibrary_IdAndLibrary_User_IdOrderByTitleAsc(
+    @EntityGraph(attributePaths = "series")
+    Page<Book> findAllByLibrary_IdAndLibrary_User_Id(
             Long libraryId,
-            Long userId
+            Long userId,
+            Pageable pageable
     );
 
     List<Book> findAllBySeries_IdAndLibrary_User_Id(

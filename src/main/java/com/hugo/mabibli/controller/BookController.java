@@ -12,6 +12,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 
 @RestController
 @RequestMapping("/api/libraries/{libraryId}/books")
@@ -23,9 +26,10 @@ public class BookController {
     }
 
     @GetMapping
-    public ResponseEntity<List<BookResponse>> findAll(@AuthenticationPrincipal UserPrincipal principal,
-                                                      @PathVariable Long libraryId) {
-        List<BookResponse> books = bookService.findAll(principal.getUser(), libraryId);
+    public ResponseEntity<Page<BookResponse>> findAll(@AuthenticationPrincipal UserPrincipal principal,
+                                                      @PathVariable Long libraryId,
+                                                      @PageableDefault(size = 20, sort = "title") Pageable pageable) {
+        Page<BookResponse> books = bookService.findAll(principal.getUser(), libraryId, pageable);
         return ResponseEntity.ok(books);
     }
 

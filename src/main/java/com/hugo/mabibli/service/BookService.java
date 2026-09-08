@@ -14,6 +14,8 @@ import com.hugo.mabibli.repository.LibraryRepository;
 import com.hugo.mabibli.repository.SeriesRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
 import java.util.HashSet;
@@ -34,19 +36,18 @@ public class BookService {
     }
 
     @Transactional(readOnly = true)
-    public List<BookResponse> findAll(User user, Long libraryId) {
+    public Page<BookResponse> findAll(User user, Long libraryId, Pageable pageable) {
         libraryRepository
                 .findByIdAndUser_Id(libraryId, user.getId())
                 .orElseThrow(LibraryNotFoundException::new);
 
         return bookRepository
-                .findAllByLibrary_IdAndLibrary_User_IdOrderByTitleAsc(
+                .findAllByLibrary_IdAndLibrary_User_Id(
                         libraryId,
-                        user.getId()
+                        user.getId(),
+                        pageable
                 )
-                .stream()
-                .map(this::toResponse)
-                .toList();
+                .map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
