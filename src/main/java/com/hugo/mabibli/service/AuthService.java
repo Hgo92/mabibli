@@ -14,6 +14,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.Locale;
 
 @Service
 public class AuthService {
@@ -34,15 +35,19 @@ public class AuthService {
     }
 
     public AuthResponse register(RegisterRequest request) {
-        if (userRepository.existsByUsername(request.username())) {
-            throw new UsernameAlreadyExistsException(request.username());
+        String username = normalizeUsername(request.username());
+
+        if (userRepository.existsByUsernameIgnoreCase(username)) {
+            throw new UsernameAlreadyExistsException(username);
         }
 
+        LocalDate now = LocalDate.now();
+
         User user = new User();
-        user.setUsername(request.username());
+        user.setUsername(username);
         user.setPassword(passwordEncoder.encode(request.password()));
-        user.setCreatedAt(LocalDate.now());
-        user.setUpdatedAt(LocalDate.now());
+        user.setCreatedAt(now);
+        user.setUpdatedAt(now);
 
         userRepository.save(user);
 
@@ -51,11 +56,17 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
+        String username = normalizeUsername(request.username());
+
         authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.username(), request.password())
+                new UsernamePasswordAuthenticationToken(username, request.password())
         );
 
-        String token = jwtService.generateToken(request.username());
+        String token = jwtService.generateToken(username);
         return new AuthResponse(token, "Bearer");
+    }
+
+    private String normalizeUsername (String username) {
+        return username.trim().toLowerCase(Locale.ROOT);
     }
 }
